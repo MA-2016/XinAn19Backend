@@ -1,25 +1,24 @@
 filebeat.inputs:
 - type: log
   paths:
-    - /var/log
+    - /var/log/*.log
+  document_type: "syslog"
+  field:
+    logsource: system
+    logtype: syslog
 
 output.logstash:
-  hosts: ["logstash:5044"]
+  hosts: ["logstash-7.0.1:5044"]
   
-filebeat.config:
-  modules:
-    path: ${path.config}/modules.d/*.yml
-    reload.enabled: false
+# filebeat.config:
+#   modules:
+#     path: ${path.config}/modules.d/*.yml
+#     reload.enabled: false
 
-filebeat.autodiscover:
-  providers:
-    - type: docker
-      hints.enabled: true
+# filebeat.autodiscover:
+#   providers:
+#     - type: docker
+#       hints.enabled: true
 
-processors:
-- add_cloud_metadata: ~
-
-output.elasticsearch:
-  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
-  username: '${ELASTICSEARCH_USERNAME:}'
-  password: '${ELASTICSEARCH_PASSWORD:}'
+# processors:
+# - add_cloud_metadata: ~

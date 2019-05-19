@@ -33,6 +33,12 @@ Reference:
 
 ```
 
+### Referencces
+
+* [Filebeat Configuration](https://blog.csdn.net/shunqixing/article/details/80401689)
+* [logstash配合filebeat监控tomcat日志](https://www.cnblogs.com/guochunyi/p/6130962.html)
+* [Logstash使用grok过滤nginx日志（二）](https://www.cnblogs.com/Orgliny/p/5592186.html)
+
 ## Others
 
 ### Create a container with Kibana image
