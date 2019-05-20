@@ -2,7 +2,7 @@
 
 架构图：
 
-![](http://luncert.cn:9080/StaticFileService/static-file/XinAn.Image.probe1.png)
+![](https://ai.uppfind.com/StaticFileService/static-file/XinAn.Image.probe1)
 
 ## 组件介绍
 
