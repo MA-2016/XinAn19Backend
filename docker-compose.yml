@@ -1,25 +1,17 @@
 version: '3'
 services:
   filebeat:
-    image: elastic/filebeat:6.7.2
+    image: elastic/filebeat:7.0.1
     networks:
-      - xnet
-    args:
-      -
-  kibana:
-    image: kibana:7.0.1
-    networks:
-      - xnet
-  web:
-    build: .
+    - xnet
     ports:
-    - "5000:5000"
-    volumes:
-    - .:/code
-    - logvolume01:/var/log
-    links:
-    - redis
-  redis:
-    image: redis
+    - ""
+  logstash:
+    image: elastic/logstash:7.0.1
+    networks:
+    - xnet
+    ports:
+    - "5044:5044"
+    - "9600:9600"
 volumes:
   logvolume01: {}
