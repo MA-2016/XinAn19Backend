@@ -5,6 +5,7 @@
 架构图：
 
 ![](http://luncert.cn:9080/StaticFileService/static-file/XinAn.Image.probe1)
+http://luncert.cn:9080/StaticFileService/static-file/XinAn.Image.probe1
 
 这个图需要调整，Kafka要放在Logstash前面。
 
