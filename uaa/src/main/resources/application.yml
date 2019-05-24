@@ -1,5 +1,12 @@
 
 spring:
+  profiles:
+    active: prod
+  jpa:
+    open-in-view: false
+---
+spring:
+  profiles: prod
   datasource:
     url: ${MYSQL_URL}
     username: ${MYSQL_USERNAME}
@@ -8,3 +15,21 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  redis:
+    database: 0
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    pool:
+      max-active: 8
+      max-wait: -1
+      max-idle: 8
+      min-idle: 0
+    timeout: 0
+---
+spring:
+  profiles: test
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+  

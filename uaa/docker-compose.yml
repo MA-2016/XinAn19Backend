@@ -1,20 +1,51 @@
-version: '3'
-
+version: "3.7"
 services: 
   uaa:
     build:
       context: .
       args:
         JAR_FILE: "target/uaa.jar"
+    container_name: uaa
     ports:
       - "8080:8080"
+    links:
+      - mysql
+      - redis
+    environment:
+      MYSQL_URL: jdbc:mysql://db-mysql:3306/oauth
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      REDIS_URL: db-redis
+      REDIS_PORT: 6379
   
-  # mysql:
-  #   image: mysql:latest
-  #   ports:
-  #   - "3306:3306"
+  mysql:
+    # use 'mysql -h192.168.1.1 -uroot -p' to test mysql connection
+    # using 'mysql -uroot -p' will not work
+    image: mysql:latest
+    container_name: db-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - type: volume
+        source: mysql-data
+        target: /var/lib/mysql
+        volume:
+          nocopy: true
 
-  # redis:
-  #   image: redis:latest
-  #   ports:
-  #   - "6369:6379"
+  redis:
+    image: redis:latest
+    container_name: db-redis
+    ports:
+      - "6369:6379"
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+        volume:
+          nocopy: true
+
+volumes:
+  mysql-data:
+  redis-data:

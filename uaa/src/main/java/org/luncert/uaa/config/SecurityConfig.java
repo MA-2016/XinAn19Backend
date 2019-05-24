@@ -1,7 +1,9 @@
 package org.luncert.uaa.config;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 import org.luncert.uaa.model.mysql.OAuthClient;
 import org.luncert.uaa.model.mysql.OAuthUser;
@@ -10,10 +12,11 @@ import org.luncert.uaa.repos.mysql.OAuthUserRepos;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
@@ -21,9 +24,16 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
+import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.provider.ClientRegistrationException;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
+import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
+import org.springframework.security.oauth2.provider.code.RandomValueAuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
 
@@ -38,8 +48,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     /**
-     * create UserDetailsService TODO: implement roles
-     * 
+     * TODO: implement roles
+     * 注册一个UserDetailsService用于用户身份认证
      * @param oauthUserRepos
      * @param passwordEncoder
      * @return
@@ -55,6 +65,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         };
     }
 
+    /**
+     * 注册一个ClientDetailsService进行用户clientId和clientSecret验证
+     * @param oauthClientRepos
+     * @return
+     */
     @Bean
     public ClientDetailsService clientDetailsService(OAuthClientRepos oauthClientRepos) {
         return clientId -> {
@@ -75,25 +90,89 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         };
     }
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(userDetailsService()).passwordEncoder(passwordEncoder());
-    }
-
+    /**
+     * 注册一个TokenStore以保存token信息
+     * @param redisConnectionFactory
+     * @return
+     */
     @Bean
     public TokenStore tokenStore(RedisConnectionFactory redisConnectionFactory) {
         return new RedisTokenStore(redisConnectionFactory);
     }
 
-    @Override
-	protected void configure(HttpSecurity http) throws Exception {
-        http.csrf().disable();
-        http.authorizeRequests()
-            .antMatchers(HttpMethod.GET, "/article").permitAll()
-            .antMatchers(HttpMethod.GET, "/article/all").authenticated()
-            .anyRequest().authenticated()
-            .and()
-            .formLogin();
-	}
+    /**
+     * 注册一个AuthorizationCodeServices以保存authorization_code的授权码code
+     * @param redisConnectionFactory
+     * @return
+     */
+    @Bean
+    public AuthorizationCodeServices authorizationCodeServices(RedisConnectionFactory redisConnectionFactory) {
+        RedisTemplate<String, OAuth2Authentication> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory);
+        redisTemplate.afterPropertiesSet();
+
+        return new RandomValueAuthorizationCodeServices() {
+            protected void store(String code, OAuth2Authentication authentication) {
+                redisTemplate.boundValueOps(code)
+                    .set(authentication, 10, TimeUnit.MINUTES);
+            }
+
+            protected OAuth2Authentication remove(String code) {
+                OAuth2Authentication authentication =
+                    redisTemplate.boundValueOps(code).get();
+                redisTemplate.delete(code);
+                return authentication;
+            }
+        };
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        return new ProviderManager(Collections.singletonList(provider));
+    }
+
+    // @Override
+    // protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+    //     auth.userDetailsService(userDetailsService()).passwordEncoder(passwordEncoder());
+    // }
+
+    // @Override
+	// protected void configure(HttpSecurity http) throws Exception {
+    //     http.csrf().disable();
+    //     http.authorizeRequests()
+    //         .antMatchers(HttpMethod.GET, "/article").permitAll()
+    //         .antMatchers(HttpMethod.GET, "/article/all").authenticated()
+    //         .anyRequest().authenticated()
+    //         .and()
+    //         .formLogin();
+    // }
+
+    @Bean
+    public AuthorizationServerConfigurer authorizationServerConfigurer(
+        UserDetailsService userDetailsService,
+        ClientDetailsService clientDetailsService,
+        TokenStore tokenStore, AuthorizationCodeServices authorizationCodeServices,
+        AuthenticationManager authenticationManager)
+    {
+        return new AuthorizationServerConfigurer() {
+            public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+
+            }
+
+            public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+                clients.withClientDetails(clientDetailsService);
+            }
+
+            public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+                endpoints.userDetailsService(userDetailsService);
+                endpoints.tokenStore(tokenStore);
+                endpoints.authorizationCodeServices(authorizationCodeServices);
+                endpoints.authenticationManager(authenticationManager);
+            }
+        };
+    }
 
 }
