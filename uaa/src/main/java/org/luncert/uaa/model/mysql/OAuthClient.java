@@ -21,15 +21,14 @@ public class OAuthClient {
 
     private String redirectUrl;
 
-    private GrantType grantType;
+    /**
+     * authorization_code
+     * client_credentials
+     * password
+     * implicit
+     */
+    private String grantType;
 
     private String scope;
-
-    public static enum GrantType {
-        authorization_code,
-        client_credentials,
-        password,
-        implicit,
-    }
 
 }
